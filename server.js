@@ -43,10 +43,9 @@ app.get('/search', (req, res) => {
 
 // ── TRENDING ─────────────────────────────────────────────────
 // GET /trending?region=ID
-app.get('/trending', (req, res) => {
-    const region = req.query.region || 'ID';
+	app.get('/trending', (req, res) => {
     try {
-        const cmd = `yt-dlp "https://www.youtube.com/feed/trending?bp=4gINGgt5dG1hX2NoYXJ0cw%3D%3D&gl=${region}" --dump-json --flat-playlist --no-warnings --playlist-end 20 2>/dev/null`;
+        const cmd = `yt-dlp "https://www.youtube.com/playlist?list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI" --dump-json --flat-playlist --no-warnings --playlist-end 20 2>/dev/null`;
         const out = execSync(cmd, { timeout: 40000 }).toString();
         const lines = out.trim().split('\n').filter(Boolean);
         const results = lines.map(line => {
@@ -62,9 +61,30 @@ app.get('/trending', (req, res) => {
             } catch { return null; }
         }).filter(Boolean);
 
+        if (results.length === 0) throw new Error('empty');
         res.json(results);
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        // Fallback: search lagu populer Indonesia
+        try {
+            const cmd2 = `yt-dlp "ytsearch20:lagu populer indonesia 2025" --dump-json --flat-playlist --no-warnings 2>/dev/null`;
+            const out2 = execSync(cmd2, { timeout: 40000 }).toString();
+            const lines2 = out2.trim().split('\n').filter(Boolean);
+            const results2 = lines2.map(line => {
+                try {
+                    const d = JSON.parse(line);
+                    return {
+                        videoId: d.id,
+                        title: d.title,
+                        uploader: d.uploader || d.channel || '',
+                        thumbnailUrl: d.thumbnail || `https://i.ytimg.com/vi/${d.id}/hqdefault.jpg`,
+                        duration: d.duration || 0
+                    };
+                } catch { return null; }
+            }).filter(Boolean);
+            res.json(results2);
+        } catch (e2) {
+            res.status(500).json({ error: e2.message });
+        }
     }
 });
 
