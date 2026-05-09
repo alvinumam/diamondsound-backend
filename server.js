@@ -107,23 +107,29 @@ app.get('/stream', (req, res) => {
     try {
         const cmd = `yt-dlp "https://www.youtube.com/watch?v=${id}" -f "bestaudio[ext=m4a]/bestaudio" --get-url --no-warnings 2>/dev/null`;
         const audioUrl = execSync(cmd, { timeout: 30000 }).toString().trim();
-
         if (!audioUrl) return res.status(404).json({ error: 'No stream found' });
 
-        // Proxy stream ke client
+        // Forward range header dari client
+        const rangeHeader = req.headers['range'];
+        const options = { headers: { 'User-Agent': 'Mozilla/5.0' } };
+        if (rangeHeader) options.headers['Range'] = rangeHeader;
+
         const proto = audioUrl.startsWith('https') ? https : http;
-        const proxyReq = proto.get(audioUrl, (proxyRes) => {
-            res.setHeader('Content-Type', proxyRes.headers['content-type'] || 'audio/mp4');
-            res.setHeader('Content-Length', proxyRes.headers['content-length'] || '');
-            res.setHeader('Accept-Ranges', 'bytes');
-            res.status(proxyRes.statusCode || 200);
+        const proxyReq = proto.get(audioUrl, options, (proxyRes) => {
+            const headers = {
+                'Content-Type': proxyRes.headers['content-type'] || 'audio/mp4',
+                'Accept-Ranges': 'bytes',
+            };
+            if (proxyRes.headers['content-length'])
+                headers['Content-Length'] = proxyRes.headers['content-length'];
+            if (proxyRes.headers['content-range'])
+                headers['Content-Range'] = proxyRes.headers['content-range'];
+
+            res.writeHead(proxyRes.statusCode, headers);
             proxyRes.pipe(res);
         });
 
-        proxyReq.on('error', (e) => {
-            res.status(500).json({ error: e.message });
-        });
-
+        proxyReq.on('error', (e) => res.status(500).json({ error: e.message }));
         req.on('close', () => proxyReq.destroy());
 
     } catch (e) {
