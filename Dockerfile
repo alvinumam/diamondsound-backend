@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y \
     nodejs npm ffmpeg curl \
-    && pip install yt-dlp \
+    && pip install -U yt-dlp \
     && apt-get clean
 
 WORKDIR /app

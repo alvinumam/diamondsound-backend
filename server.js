@@ -5,6 +5,14 @@ const https = require('https');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Auto update yt-dlp saat startup
+try {
+    execSync('pip install -U yt-dlp 2>/dev/null', { timeout: 60000 });
+    console.log('yt-dlp updated');
+} catch(e) {
+    console.log('yt-dlp update skipped');
+}
+
 app.use(express.json());
 
 // ── HEALTH CHECK ─────────────────────────────────────────────
