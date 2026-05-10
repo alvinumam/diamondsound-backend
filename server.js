@@ -138,7 +138,6 @@ app.get('/trending', (req, res) => {
         const results = out.trim().split('\n').filter(Boolean).map(line => {
             try {
                 const d = JSON.parse(line);
-                if ((d.duration || 0) < 60 || (d.duration || 0) > 600) return null;
                 return {
                     videoId: d.id,
                     title: d.title,
